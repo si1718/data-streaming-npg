@@ -10,6 +10,7 @@
 
     <build>
         <plugins>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -19,6 +20,7 @@
                 </configuration>
                 <version>3.6.1</version>
             </plugin>
+
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>appassembler-maven-plugin</artifactId>
@@ -33,6 +35,10 @@
                         <program>
                             <mainClass>data.streaming.test.TestFlinkKafkaConsumer</mainClass>
                             <name>consumer</name>
+                        </program>
+                        <program>
+                            <mainClass>data.streaming.test.TestScheduledExecutorService</mainClass>
+                            <name>scheduled</name>
                         </program>
                     </programs>
                 </configuration>
