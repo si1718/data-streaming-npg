@@ -22,7 +22,6 @@ public class Batcher {
 
     private final Integer INITIAL_DELAY = 0; // In seconds
     private final Integer PERIOD = 60 * 60 * 24; // In seconds => 1 day
-//    private final Integer PERIOD = 60; // In seconds => 1 day
     private final Integer SECONDS_TO_CANCEL = 60 * 60; // In seconds
 
     private final Integer MIN_IN_RATING = 0;
@@ -52,7 +51,7 @@ public class Batcher {
 
         System.out.printf("%n Initializing batch... %n%n");
 
-        saveKeywordDateTweetsStatistics();
+//        saveKeywordDateTweetsStatistics();
 
         saveChapterChapterRatingStatistics();
 
@@ -63,12 +62,19 @@ public class Batcher {
 
         System.out.printf("%n Executing <chapter_a, chapter_b, rating> statistics task... %n%n");
 
+        System.out.printf("%n Cleaning previous data in collection %s ... %n%n", CHAPTERS_RATING_COLLECTION);
+        mongoConnection.cleanCollection(CHAPTERS_RATING_COLLECTION);
+        System.out.printf("%n Data cleaned. %n");
+
         List<Chapter> chapters = getChapters();
         List<CustomTuple<String, String, Integer>> tupleList = new ArrayList<>();
 
-        Integer max = Integer.MIN_VALUE;
+        Integer max = 0;
 
         for (Chapter chapterA : chapters) {
+
+            max = Integer.MIN_VALUE;
+
             for (Chapter chapterB : chapters) {
                 if (!chapterA.equals(chapterB)) {
 
@@ -81,30 +87,28 @@ public class Batcher {
                     max = Math.max(max, intersection.size());
                 }
             }
-        }
 
-        System.out.printf("%n Cleaning previous data in collection %s ... %n%n", CHAPTERS_RATING_COLLECTION);
-        mongoConnection.cleanCollection(CHAPTERS_RATING_COLLECTION);
-        System.out.printf("%n Data cleaned. %n");
+            // If max is equals to min_in_rating meanings that any chapter has any keyword in common with other chapters
+            if(max > MIN_IN_RATING) {
 
-        // If max is equals to min_in_rating meanings that any chapter has any keyword in common with other chapters
-        if(max > MIN_IN_RATING) {
+                for(CustomTuple<String, String, Integer> tuple : tupleList) {
 
-            for(CustomTuple<String, String, Integer> tuple : tupleList) {
+                    System.out.printf("%n Saving tuple <%s, %s, %d> ... %n%n", tuple.getLeft(), tuple.getMiddle(), tuple.getRight());
 
-                System.out.printf("%n Saving tuple <%s, %s, %d> ... %n%n", tuple.getLeft(), tuple.getMiddle(), tuple.getRight());
+                    tuple.setRight(Utils.mapValue(tuple.getRight(), MIN_IN_RATING, max, MIN_OUT_RATING, MAX_OUT_RATING));
 
-                tuple.setRight(Utils.mapValue(tuple.getRight(), MIN_IN_RATING, max, MIN_OUT_RATING, MAX_OUT_RATING));
+                    Document document = new Document();
+                    document.append("chapter_a", tuple.getLeft());
+                    document.append("chapter_b", tuple.getMiddle());
+                    document.append("rating", tuple.getRight());
 
-                Document document = new Document();
-                document.append("chapter_a", tuple.getLeft());
-                document.append("chapter_b", tuple.getMiddle());
-                document.append("rating", tuple.getRight());
+                    mongoConnection.populateCollection(CHAPTERS_RATING_COLLECTION, document);
 
-                mongoConnection.populateCollection(CHAPTERS_RATING_COLLECTION, document);
-
-                System.out.printf("%n Data saved. %n%n");
+                    System.out.printf("%n Data saved. %n%n");
+                }
             }
+
+            tupleList.clear();
         }
 
         System.out.printf("%n <chapter_a, chapter_b, rating> statistics task finished. %n%n");
