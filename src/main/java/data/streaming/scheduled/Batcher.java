@@ -51,7 +51,7 @@ public class Batcher {
 
         System.out.printf("%n Initializing batch... %n%n");
 
-//        saveKeywordDateTweetsStatistics();
+        saveKeywordDateTweetsStatistics();
 
         saveChapterChapterRatingStatistics();
 
