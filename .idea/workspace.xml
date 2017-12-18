@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="7dd8062a-fade-4453-8491-a1f3e79458aa" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/java/data/streaming/scheduled/Batcher.java" afterPath="$PROJECT_DIR$/src/main/java/data/streaming/scheduled/Batcher.java" />
-    </list>
+    <list default="true" id="7dd8062a-fade-4453-8491-a1f3e79458aa" name="Default" comment="" />
     <ignored path="$PROJECT_DIR$/target/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -19,8 +16,8 @@
       <file leaf-file-name="Batcher.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/java/data/streaming/scheduled/Batcher.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="629">
-              <caret line="54" column="0" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="154" selection-end-column="0" />
+            <state relative-caret-position="68">
+              <caret line="19" column="0" lean-forward="true" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
               <folding>
                 <element signature="e#1510#1511#0" expanded="true" />
                 <element signature="e#1562#1563#0" expanded="true" />
@@ -811,12 +808,12 @@
       <workItem from="1513432131775" duration="647000" />
       <workItem from="1513549061337" duration="209000" />
       <workItem from="1513587988901" duration="746000" />
-      <workItem from="1513588756247" duration="7000" />
+      <workItem from="1513588756247" duration="36000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="69348000" />
+    <option name="totallyTimeSpent" value="69377000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="0" />
@@ -1287,8 +1284,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/java/data/streaming/scheduled/Batcher.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="629">
-          <caret line="54" column="0" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="154" selection-end-column="0" />
+        <state relative-caret-position="68">
+          <caret line="19" column="0" lean-forward="true" selection-start-line="19" selection-start-column="0" selection-end-line="19" selection-end-column="0" />
           <folding>
             <element signature="e#1510#1511#0" expanded="true" />
             <element signature="e#1562#1563#0" expanded="true" />
