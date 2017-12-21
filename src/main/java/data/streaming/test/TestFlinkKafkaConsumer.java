@@ -31,7 +31,7 @@ public class TestFlinkKafkaConsumer {
 
        AllWindowFunction<String, String, TimeWindow> apply = new AllWindowFunctionImpl();
 
-        stream.timeWindowAll(Time.seconds(60 * 2)).apply(apply)
+        stream.timeWindowAll(Time.seconds(60)).apply(apply)
                 .filter(Utils::isTweetValid)
                 .map(Utils::createTweetDTO)
                 .addSink(Utils::saveTweetInDatabase);
