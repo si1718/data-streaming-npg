@@ -9,8 +9,18 @@ import java.util.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import data.streaming.db.MongoConnector;
+import data.streaming.dto.Keyword;
 import data.streaming.dto.Tweet;
 import org.bson.Document;
+import org.grouplens.lenskit.ItemRecommender;
+import org.grouplens.lenskit.ItemScorer;
+import org.grouplens.lenskit.Recommender;
+import org.grouplens.lenskit.RecommenderBuildException;
+import org.grouplens.lenskit.core.LenskitConfiguration;
+import org.grouplens.lenskit.core.LenskitRecommender;
+import org.grouplens.lenskit.data.dao.EventCollectionDAO;
+import org.grouplens.lenskit.data.dao.EventDAO;
+import org.grouplens.lenskit.knn.user.UserUserItemScorer;
 
 public class Utils {
 
@@ -111,4 +121,16 @@ public class Utils {
     public static int mapValue(int x, int in_min, int in_max, int out_min, int out_max) {
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
     }
+
+//    public static ItemRecommender getRecommender(Set<Keyword> statistics) throws RecommenderBuildException {
+//
+//        LenskitConfiguration config = new LenskitConfiguration();
+//        EventDAO myDAO = EventCollectionDAO.create(createEventCollection(statistics));
+//
+//        config.bind(EventDAO.class).to(myDAO);
+//        config.bind(ItemScorer.class).to(UserUserItemScorer.class);
+//
+//        Recommender rec = LenskitRecommender.build(config);
+//        return rec.getItemRecommender();
+//    }
 }
