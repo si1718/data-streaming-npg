@@ -38,7 +38,7 @@ buildNumber.properties
 # CMake
 cmake-build-debug/
 
-# Mongo Explorer plugin:
+# MongoConnector Explorer plugin:
 .idea/**/mongoSettings.xml
 
 ## File-based project format:

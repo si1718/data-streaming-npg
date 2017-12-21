@@ -5,25 +5,21 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.gson.annotations.SerializedName;
 import data.streaming.utils.Utils;
 
-import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
 
 /**
  * POJO to represent a tweet which is a Tuple4<Name, Text, Date, Language>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class TweetDTO {
+public class Tweet {
     @JsonProperty("created_at")
     @SerializedName("created_at")
     private String createdAt;
 
     @JsonProperty("user")
     @SerializedName("user")
-    private TweetUserDTO user;
+    private TweetUser user;
 
     @JsonProperty("text")
     @SerializedName("text")
@@ -33,7 +29,7 @@ public class TweetDTO {
     @SerializedName("lang")
     private String language;
 
-    public TweetDTO(String createdAt, TweetUserDTO user, String text, String language) throws ParseException {
+    public Tweet(String createdAt, TweetUser user, String text, String language) throws ParseException {
         super();
         this.createdAt = createdAt;
         this.user = user;
@@ -41,11 +37,11 @@ public class TweetDTO {
         this.language = language;
     }
 
-    public TweetDTO() {
+    public Tweet() {
         super();
     }
 
-    public TweetUserDTO getUser() {
+    public TweetUser getUser() {
         return user;
     }
 
@@ -78,12 +74,12 @@ public class TweetDTO {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        TweetDTO tweetDTO = (TweetDTO) o;
+        Tweet tweet = (Tweet) o;
 
-        if (createdAt != null ? !createdAt.equals(tweetDTO.createdAt) : tweetDTO.createdAt != null) return false;
-        if (user != null ? !user.equals(tweetDTO.user) : tweetDTO.user != null) return false;
-        if (text != null ? !text.equals(tweetDTO.text) : tweetDTO.text != null) return false;
-        return language != null ? language.equals(tweetDTO.language) : tweetDTO.language == null;
+        if (createdAt != null ? !createdAt.equals(tweet.createdAt) : tweet.createdAt != null) return false;
+        if (user != null ? !user.equals(tweet.user) : tweet.user != null) return false;
+        if (text != null ? !text.equals(tweet.text) : tweet.text != null) return false;
+        return language != null ? language.equals(tweet.language) : tweet.language == null;
     }
 
     @Override
@@ -97,7 +93,7 @@ public class TweetDTO {
 
     @Override
     public String toString() {
-        return "TweetDTO{" +
+        return "Tweet{" +
                 "createdAt='" + createdAt + '\'' +
                 ", user=" + user +
                 ", text='" + text + '\'' +

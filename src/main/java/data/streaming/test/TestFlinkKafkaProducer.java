@@ -1,7 +1,7 @@
 
 package data.streaming.test;
 
-import data.streaming.db.MongoConnection;
+import data.streaming.db.MongoConnector;
 import data.streaming.utils.LoggingFactory;
 import data.streaming.waux.ValidTagsTweetEndpoIntinitializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -21,8 +21,8 @@ public class TestFlinkKafkaProducer {
 
         TwitterSource twitterSource = new TwitterSource(LoggingFactory.getTwitterCredentias());
 
-        MongoConnection mongoConnection = new MongoConnection();
-        SortedSet<String> keywords = mongoConnection.getKeywords();
+        MongoConnector mongoConnector = new MongoConnector();
+        SortedSet<String> keywords = mongoConnector.getKeywords();
 
         final String[] KEYWORDS = keywords.toArray(new String[keywords.size()]);
 

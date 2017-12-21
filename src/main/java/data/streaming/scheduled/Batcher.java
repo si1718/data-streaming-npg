@@ -1,19 +1,23 @@
 package data.streaming.scheduled;
 
-import data.streaming.db.MongoConnection;
+import data.streaming.db.MongoConnector;
 import data.streaming.dto.Chapter;
+import data.streaming.dto.CustomTriple;
 import data.streaming.dto.CustomTuple;
-import data.streaming.dto.TweetDTO;
+import data.streaming.dto.Tweet;
 import data.streaming.utils.Utils;
+import org.apache.commons.collections.map.HashedMap;
 import org.bson.Document;
 
+import javax.print.Doc;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.stream.Collectors;
 
-import static data.streaming.db.MongoConnection.CHAPTERS_RATING_COLLECTION;
-import static data.streaming.db.MongoConnection.KEYWORD_DATE_TWEETS_COLLECTION;
+import static data.streaming.db.MongoConnector.RATINGS_COLLECTION;
+import static data.streaming.db.MongoConnector.REPORTS_COLLECTION;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Batcher {
@@ -28,7 +32,10 @@ public class Batcher {
     private final Integer MIN_OUT_RATING = 1;
     private final Integer MAX_OUT_RATING = 5;
 
-    private final MongoConnection mongoConnection = new MongoConnection();
+    private final String DAILY_REPORT_TYPE = "daily_report";
+    private final String MONTHLY_REPORT_TYPE = "monthly_report";
+
+    private final MongoConnector mongoConnector = new MongoConnector();
 
     public void prepare() {
 
@@ -40,34 +47,34 @@ public class Batcher {
     }
 
     private SortedSet<String> getKeywords() {
-        return mongoConnection.getKeywords();
+        return mongoConnector.getKeywords();
     }
 
     private List<Chapter> getChapters() {
-        return mongoConnection.getChapters();
+        return mongoConnector.getChaptersWithKeywords();
     }
 
     private void start() {
 
         System.out.printf("%n Initializing batch... %n%n");
 
-        saveKeywordDateTweetsStatistics();
+        saveStatistics();
 
-        saveChapterChapterRatingStatistics();
+        saveRatings();
 
         System.out.printf("%n Batch finished. %n%n");
     }
 
-    private void saveChapterChapterRatingStatistics() {
+    private void saveRatings() {
 
-        System.out.printf("%n Executing <chapter_a, chapter_b, rating> statistics task... %n%n");
+        System.out.printf("%n Executing statistics task... %n%n");
 
-        System.out.printf("%n Cleaning previous data in collection %s ... %n%n", CHAPTERS_RATING_COLLECTION);
-        mongoConnection.cleanCollection(CHAPTERS_RATING_COLLECTION);
+        System.out.printf("%n Cleaning previous data in collection %s ... %n%n", RATINGS_COLLECTION);
+        mongoConnector.cleanCollection(RATINGS_COLLECTION);
         System.out.printf("%n Data cleaned. %n");
 
         List<Chapter> chapters = getChapters();
-        List<CustomTuple<String, String, Integer>> tupleList = new ArrayList<>();
+        List<CustomTriple<String, String, Integer>> tupleList = new ArrayList<>();
 
         Integer max = 0;
 
@@ -81,7 +88,7 @@ public class Batcher {
                     SortedSet<String> intersection = new TreeSet<>(chapterA.getKeywords()); // use the copy constructor
                     intersection.retainAll(chapterB.getKeywords());
 
-                    CustomTuple<String, String, Integer> tuple = new CustomTuple<>(chapterA.getIdChapter(), chapterB.getIdChapter(), intersection.size());
+                    CustomTriple<String, String, Integer> tuple = new CustomTriple<>(chapterA.getIdChapter(), chapterB.getIdChapter(), intersection.size());
                     tupleList.add(tuple);
 
                     max = Math.max(max, intersection.size());
@@ -89,9 +96,9 @@ public class Batcher {
             }
 
             // If max is equals to min_in_rating meanings that any chapter has any keyword in common with other chapters
-            if(max > MIN_IN_RATING) {
+            if (max > MIN_IN_RATING) {
 
-                for(CustomTuple<String, String, Integer> tuple : tupleList) {
+                for (CustomTriple<String, String, Integer> tuple : tupleList) {
 
                     System.out.printf("%n Saving tuple <%s, %s, %d> ... %n%n", tuple.getLeft(), tuple.getMiddle(), tuple.getRight());
 
@@ -102,7 +109,7 @@ public class Batcher {
                     document.append("chapter_b", tuple.getMiddle());
                     document.append("rating", tuple.getRight());
 
-                    mongoConnection.populateCollection(CHAPTERS_RATING_COLLECTION, document);
+                    mongoConnector.populateCollection(RATINGS_COLLECTION, document);
 
                     System.out.printf("%n Data saved. %n%n");
                 }
@@ -111,44 +118,135 @@ public class Batcher {
             tupleList.clear();
         }
 
-        System.out.printf("%n <chapter_a, chapter_b, rating> statistics task finished. %n%n");
+        System.out.printf("%n Statistics task finished. %n%n");
     }
 
-    private void saveKeywordDateTweetsStatistics() {
+    private void saveStatistics() {
 
-        System.out.printf("%n Executing <keyword, date, tweets> statistics task... %n%n");
+        System.out.printf("%n Executing statistics task... %n%n");
 
         SortedSet<String> keywords = getKeywords();
 
         System.out.printf("%n Keywords found %s %n%n", keywords);
 
-        Map<String, Map<String, List<TweetDTO>>> map = new HashMap<>();
+        Map<String, List<CustomTuple<Date, Integer>>> dailyReport = new HashMap<>();
+        Map<String, List<CustomTuple<Date, Integer>>> monthlyReport = new HashMap<>();
 
         keywords.forEach(keyword -> {
-            Map<String, List<TweetDTO>> tweets = mongoConnection.getTweetsByKeywordAndDate(keyword);
-            map.put(keyword, tweets);
+
+            List<Tweet> tweets = mongoConnector.getTweetsByKeyword(keyword);
+
+            List<CustomTuple<Date, Integer>> daily = getDateCountByType(tweets, DAILY_REPORT_TYPE);
+            dailyReport.put(keyword, daily);
+
+            List<CustomTuple<Date, Integer>> monthly = getDateCountByType(tweets, MONTHLY_REPORT_TYPE);
+            monthlyReport.put(keyword, monthly);
         });
 
-        System.out.printf("%n Cleaning previous data in collection %s ... %n%n", KEYWORD_DATE_TWEETS_COLLECTION);
-        mongoConnection.cleanCollection(KEYWORD_DATE_TWEETS_COLLECTION);
+        System.out.printf("%n Cleaning previous data in collection %s ... %n%n", REPORTS_COLLECTION);
+        mongoConnector.cleanCollection(REPORTS_COLLECTION);
         System.out.printf("%n Data cleaned. %n");
 
-        map.forEach((keyword, values) -> {
-            values.forEach((date, tweets) -> {
+        dailyReport.forEach((keyword, tupleLists) -> {
 
-                System.out.printf("%n Saving data from the keyword %s as of %s ... %n%n", keyword, date);
+            tupleLists.forEach(tuple -> {
 
-                Document document = new Document();
-                document.append("keyword", keyword);
-                document.append("date", date);
-                document.append("count", tweets.size());
-
-                mongoConnection.populateCollection(KEYWORD_DATE_TWEETS_COLLECTION, document);
-
-                System.out.printf("%n Data saved. %n%n");
+                saveDocument(keyword, tuple, DAILY_REPORT_TYPE);
             });
         });
 
-        System.out.printf("%n <keyword, date, tweets> statistics task finished. %n%n");
+        monthlyReport.forEach((keyword, tupleLists) -> {
+
+            tupleLists.forEach(tuple -> {
+
+                saveDocument(keyword, tuple, MONTHLY_REPORT_TYPE);
+            });
+        });
+
+        System.out.printf("%n Statistics task finished. %n%n");
+    }
+
+    private void saveDocument(String keyword, CustomTuple<Date, Integer> tuple, String reportType) {
+
+        System.out.printf("%n Saving data from the keyword %s as of %s ... %n%n", keyword, tuple.getLeft().toString());
+
+        Document document = new Document();
+        document.append("keyword", keyword);
+        document.append("date", Utils.convertDateToISO8601(tuple.getLeft()));
+        document.append("count", tuple.getRight());
+        document.append("type", reportType);
+
+        mongoConnector.populateCollection(REPORTS_COLLECTION, document);
+
+        System.out.printf("%n Data saved. %n%n");
+    }
+
+    private List<CustomTuple<Date, Integer>> getDateCountByType(List<Tweet> tweets, String reportType) {
+
+        List<CustomTuple<Date, Integer>> information = new ArrayList<>();
+
+        tweets.forEach(tweet -> {
+
+            List<CustomTuple<Date, Integer>> result = information.stream()
+                    .filter(item -> isSameItem(item, tweet, reportType))
+                    .collect(Collectors.toList());
+
+            if (result.isEmpty()) {
+
+                information.add(new CustomTuple<>(tweet.getDate(), 1));
+
+            } else {
+
+                result.forEach(tuple -> {
+                    tuple.setRight(tuple.getRight() + 1);
+                });
+            }
+
+        });
+
+        return information;
+    }
+
+    private boolean isSameItem(CustomTuple<Date, Integer> item, Tweet tweet, String reportType) {
+
+        boolean result;
+
+        switch (reportType) {
+            case DAILY_REPORT_TYPE:
+                result = isSameDayMonthAndYear(item, tweet);
+                break;
+            case MONTHLY_REPORT_TYPE:
+                result = isSameMonthOfYear(item, tweet);
+                break;
+            default:
+                result = isSameDayMonthAndYear(item, tweet);
+                break;
+        }
+
+        return result;
+    }
+
+    private boolean isSameMonthOfYear(CustomTuple<Date, Integer> item, Tweet tweet) {
+
+        Calendar calendarA = Calendar.getInstance();
+        Calendar calendarB = Calendar.getInstance();
+
+        calendarA.setTime(tweet.getDate());
+        calendarB.setTime(item.getLeft());
+
+        return (calendarA.get(Calendar.YEAR) == calendarB.get(Calendar.YEAR)) && (calendarA.get(Calendar.MONTH) == calendarB.get(Calendar.MONTH));
+    }
+
+    private boolean isSameDayMonthAndYear(CustomTuple<Date, Integer> item, Tweet tweet) {
+
+        Calendar calendarA = Calendar.getInstance();
+        Calendar calendarB = Calendar.getInstance();
+
+        calendarA.setTime(tweet.getDate());
+        calendarB.setTime(item.getLeft());
+
+        return (calendarA.get(Calendar.YEAR) == calendarB.get(Calendar.YEAR))
+                && (calendarA.get(Calendar.MONTH) == calendarB.get(Calendar.MONTH))
+                && (calendarA.get(Calendar.DATE) == calendarB.get(Calendar.DATE));
     }
 }

@@ -8,8 +8,8 @@ import java.util.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
-import data.streaming.db.MongoConnection;
-import data.streaming.dto.TweetDTO;
+import data.streaming.db.MongoConnector;
+import data.streaming.dto.Tweet;
 import org.bson.Document;
 
 public class Utils {
@@ -20,31 +20,21 @@ public class Utils {
     public static final String WITHOUT_TIME_DATE = "yyyy-MM-dd";
 
     public static final String[] TAG_NAMES = {"#OTDirecto12D", "#InmaculadaConcepcion"};
-    public static final String URL_DATABASE = "mongodb://pozas91:pozas91@ds149865.mlab.com:49865/si1718-npg-chapters";
+    public static final String BASE_URL_DATABASE = "mongodb://pozas91:pozas91@ds149865.mlab.com:49865/si1718-npg-chapters";
+    public static final String TWEETS_URL_DATABASE = "mongodb://pozas91:pozas91@ds161346.mlab.com:61346/si1718-npg-tweets";
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    public static TweetDTO createTweetDTO(String x) {
+    public static Tweet createTweetDTO(String x) {
 
-        TweetDTO result = null;
+        Tweet result = null;
 
         try {
-            result = mapper.readValue(x, TweetDTO.class);
+            result = mapper.readValue(x, Tweet.class);
         } catch (IOException ignored) {
 
         }
 
         return result;
-    }
-
-    public static void saveTweetInDatabase(TweetDTO x) {
-
-        MongoConnection mongoConnection = new MongoConnection();
-
-        Gson gson = new Gson();
-
-        String json = gson.toJson(x);
-        Document tweet = Document.parse(json);
-        mongoConnection.populateCollection("tweets", tweet);
     }
 
     public static Boolean isTweetValid(String x) {
@@ -52,12 +42,22 @@ public class Utils {
         boolean result = true;
 
         try {
-            mapper.readValue(x, TweetDTO.class);
+            mapper.readValue(x, Tweet.class);
         } catch (IOException ignored) {
             result = false;
         }
 
         return result;
+    }
+
+    public static void saveTweetInDatabase(Tweet x) {
+
+        Gson gson = new Gson();
+        String json = gson.toJson(x);
+        Document tweet = Document.parse(json);
+
+        MongoConnector mongoConnector = new MongoConnector();
+        mongoConnector.populateCollection(MongoConnector.TWEETS_COLLECTION, MongoConnector.TWEETS_COLLECTION, tweet);
     }
 
     public static String convertDateToISO8601(Date date) {
