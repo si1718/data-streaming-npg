@@ -9,7 +9,7 @@ import java.text.ParseException;
 import java.util.Date;
 
 /**
- * POJO to represent a tweet which is a Tuple4<Name, Text, Date, Language>
+ * POJO to represent a tweet which is a Tuple4<Name, Text, Date, LanguageUtils>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Tweet {
@@ -62,7 +62,7 @@ public class Tweet {
         Date date = null;
 
         try {
-            date = Utils.getTwitterDate(this.createdAt);
+            date = Utils.convertTwitterDateToDate(this.createdAt);
         } catch (ParseException ignored) {
         }
 

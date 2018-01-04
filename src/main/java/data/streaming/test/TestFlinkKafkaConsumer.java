@@ -27,11 +27,9 @@ public class TestFlinkKafkaConsumer {
 
         DataStream<String> stream = env.addSource(new FlinkKafkaConsumer010<>(props.getProperty("CLOUDKARAFKA_TOPIC").trim(), new SimpleStringSchema(), props));
 
-        // TODO 4: Hacer algo más interesante que mostrar por pantalla.
+        AllWindowFunction<String, String, TimeWindow> apply = new AllWindowFunctionImpl();
 
-       AllWindowFunction<String, String, TimeWindow> apply = new AllWindowFunctionImpl();
-
-        stream.timeWindowAll(Time.seconds(60)).apply(apply)
+        stream.timeWindowAll(Time.seconds(10)).apply(apply)
                 .filter(Utils::isTweetValid)
                 .map(Utils::createTweetDTO)
                 .addSink(Utils::saveTweetInDatabase);

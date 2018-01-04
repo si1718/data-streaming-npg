@@ -1,27 +1,24 @@
 package data.streaming.db;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
-import data.streaming.dto.Chapter;
-import data.streaming.dto.Tweet;
+import data.streaming.dto.*;
 import data.streaming.utils.Utils;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class MongoConnector {
 
+    // MARK: Mongo data
     private final MongoClientURI baseURI = new MongoClientURI(Utils.BASE_URL_DATABASE);
     private final MongoClientURI tweetsURI = new MongoClientURI(Utils.TWEETS_URL_DATABASE);
     private MongoClient client;
@@ -30,9 +27,12 @@ public class MongoConnector {
     // MARK: Databases
     public static final String TWEETS_DATABASE = "tweets";
     public static final String BASE_DATABASE = "base";
+    private static final Integer MAX_BATCH_TO_SAVE = 500;
+    private static final Integer MAX_BATCH_TO_GET = 500;
 
     // MARK: Collections
     public static final String TWEETS_COLLECTION = "tweets";
+    public static final String RECOMMENDATIONS_COLLECTION = "recommendations";
     public static final String CHAPTERS_COLLECTION = "chapters";
     public static final String REPORTS_COLLECTION = "reports";
     public static final String RATINGS_COLLECTION = "ratings";
@@ -43,7 +43,11 @@ public class MongoConnector {
 
         openDatabase();
 
-        this.getCollection(collection).insertMany(data);
+        List<List<Document>> batches = Utils.batchList(data, MAX_BATCH_TO_SAVE);
+
+        batches.forEach(batch -> {
+            this.getCollection(collection).insertMany(batch);
+        });
 
         closeDatabase();
     }
@@ -72,12 +76,26 @@ public class MongoConnector {
 
         List<Tweet> tweets = new ArrayList<>();
         Gson gson = new Gson();
+        List<Document> documents = new ArrayList<>();
+        Bson query = Filters.regex("text", ".*" + keyword + ".*", "i");
+        BasicDBObject sort = new BasicDBObject("_id", -1);
+        final int maxSize = 10000;
+        int limit;
 
         openDatabase(tweetsURI);
 
         MongoCollection<Document> collection = this.getCollection(TWEETS_COLLECTION);
 
-        List<Document> documents = collection.find(Filters.regex("text", ".*" + keyword + ".*", "i")).into(new ArrayList<>());
+        final int total = Math.toIntExact(collection.count(query));
+
+        for(int i = 0; documents.size() < total; i += maxSize) {
+
+            limit = ((i + maxSize) < total) ? maxSize : (total - i);
+
+            List<Document> batch = collection.find(query).sort(sort).skip(i).limit(limit).into(new ArrayList<>());
+
+            documents.addAll(batch);
+        }
 
         closeDatabase();
 
@@ -89,6 +107,47 @@ public class MongoConnector {
         });
 
         return tweets;
+    }
+
+    public List<Chapter> getChapters() {
+
+        List<Chapter> chapters = new ArrayList<>();
+        GsonBuilder builder = new GsonBuilder().serializeNulls();
+        Gson gson = builder.create();
+        List<Document> documents = new ArrayList<>();
+        BasicDBObject sort = new BasicDBObject("_id", -1);
+        int limit;
+
+        openDatabase();
+
+        MongoCollection<Document> collection = this.getCollection(CHAPTERS_COLLECTION);
+
+        final int total = Math.toIntExact(collection.count());
+
+        for(int i = 0; documents.size() < total; i += MAX_BATCH_TO_GET) {
+
+            limit = ((i + MAX_BATCH_TO_GET) < total) ? MAX_BATCH_TO_GET : (total - i);
+
+            List<Document> batch = collection.find().sort(sort).skip(i).limit(limit).into(new ArrayList<>());
+
+            documents.addAll(batch);
+        }
+
+        closeDatabase();
+
+        documents.forEach(document -> {
+
+            try {
+
+                Chapter chapter = gson.fromJson(document.toJson(), Chapter.class);
+                chapters.add(chapter);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        return chapters;
     }
 
     public SortedSet<String> getKeywords() {
@@ -103,18 +162,25 @@ public class MongoConnector {
         return keywords;
     }
 
+    public SortedSet<String> getKeywordsHashTags() {
+
+        return getKeywords()
+                .stream()
+                .map(x -> "#" + x)
+                .collect(Collectors.toCollection(TreeSet::new));
+    }
+
     public List<Chapter> getChaptersWithKeywords() {
 
-        openDatabase();
-
         List<Chapter> chapters = new ArrayList<>();
+        Gson gson = new Gson();
+
+        openDatabase();
 
         MongoCollection<Document> collection = this.getCollection(CHAPTERS_COLLECTION);
         List<Document> result = collection.find(Filters.exists("keywords", true)).into(new ArrayList<>());
 
         closeDatabase();
-
-        Gson gson = new Gson();
 
         result.forEach(document -> {
 
@@ -134,25 +200,92 @@ public class MongoConnector {
         return chapters;
     }
 
+    public SortedSet<Report> getReports() {
+
+        SortedSet<Report> reports = new TreeSet<>();
+        Gson gson = new Gson();
+
+        openDatabase();
+
+        MongoCollection<Document> collection = this.getCollection(REPORTS_COLLECTION);
+        List<Document> result = collection.find().into(new ArrayList<>());
+
+        closeDatabase();
+
+        for (Document document : result) {
+
+            try {
+
+                String json = document.toJson();
+                Report report = gson.fromJson(json, Report.class);
+                reports.add(report);
+
+            } catch (Exception ignored) {
+            }
+        }
+
+        return reports;
+    }
+
+    public Set<Rating> getRatings() {
+
+        Set<Rating> ratings = new HashSet<>();
+        Gson gson = new Gson();
+
+        openDatabase();
+
+        MongoCollection<Document> collection = this.getCollection(RATINGS_COLLECTION);
+        List<Document> result = collection.find().into(new ArrayList<>());
+
+        closeDatabase();
+
+        result.forEach(document -> {
+
+            try {
+                Rating rating = gson.fromJson(document.toJson(), Rating.class);
+                ratings.add(rating);
+            } catch (Exception ignored) {
+
+            }
+        });
+
+        return ratings;
+    }
+
 
     // MARK: Aux functions
 
     public void cleanCollection(String collection) {
+        cleanCollection(baseURI, collection);
+    }
 
-        openDatabase();
+    public void cleanCollection(String database, String collection) {
 
-        this.getCollection(collection).drop();
+        MongoClientURI uri;
 
-        closeDatabase();
+        switch (database) {
+            case TWEETS_DATABASE:
+                uri = tweetsURI;
+                break;
+            default:
+                uri = baseURI;
+                break;
+        }
+
+        cleanCollection(uri, collection);
     }
 
     public void cleanCollection(MongoClientURI uri, String collection) {
+
+        System.out.printf("%n Cleaning previous data in collection %s ... %n%n", collection);
 
         openDatabase(uri);
 
         this.getCollection(collection).drop();
 
         closeDatabase();
+
+        System.out.printf("%n Data cleaned... %n%n");
     }
 
 
