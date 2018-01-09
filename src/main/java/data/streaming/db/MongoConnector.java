@@ -13,6 +13,7 @@ import data.streaming.utils.Utils;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
+import javax.print.Doc;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,10 +29,12 @@ public class MongoConnector {
     public static final String TWEETS_DATABASE = "tweets";
     public static final String BASE_DATABASE = "base";
     private static final Integer MAX_BATCH_TO_SAVE = 500;
-    private static final Integer MAX_BATCH_TO_GET = 500;
+    private static final Integer MAX_BATCH_TO_GET = 1000;
 
     // MARK: Collections
     public static final String TWEETS_COLLECTION = "tweets";
+    public static final String RESEARCHERS_PER_YEAR_COLLECTION = "researchers_per_year";
+    public static final String RESEARCHERS_PER_CHAPTER_COLLECTION = "researchers_per_chapter";
     public static final String RECOMMENDATIONS_COLLECTION = "recommendations";
     public static final String CHAPTERS_COLLECTION = "chapters";
     public static final String REPORTS_COLLECTION = "reports";
@@ -46,7 +49,9 @@ public class MongoConnector {
         List<List<Document>> batches = Utils.batchList(data, MAX_BATCH_TO_SAVE);
 
         batches.forEach(batch -> {
+            System.out.printf("%nSaving batch: %s %n%n", batch.toString());
             this.getCollection(collection).insertMany(batch);
+            System.out.println("Batch saved.");
         });
 
         closeDatabase();
@@ -76,28 +81,9 @@ public class MongoConnector {
 
         List<Tweet> tweets = new ArrayList<>();
         Gson gson = new Gson();
-        List<Document> documents = new ArrayList<>();
         Bson query = Filters.regex("text", ".*" + keyword + ".*", "i");
-        BasicDBObject sort = new BasicDBObject("_id", -1);
-        final int maxSize = 10000;
-        int limit;
 
-        openDatabase(tweetsURI);
-
-        MongoCollection<Document> collection = this.getCollection(TWEETS_COLLECTION);
-
-        final int total = Math.toIntExact(collection.count(query));
-
-        for(int i = 0; documents.size() < total; i += maxSize) {
-
-            limit = ((i + maxSize) < total) ? maxSize : (total - i);
-
-            List<Document> batch = collection.find(query).sort(sort).skip(i).limit(limit).into(new ArrayList<>());
-
-            documents.addAll(batch);
-        }
-
-        closeDatabase();
+        List<Document> documents = getDocumentsFromCollection(TWEETS_COLLECTION, query, tweetsURI);
 
         documents.forEach(document -> {
 
@@ -114,26 +100,8 @@ public class MongoConnector {
         List<Chapter> chapters = new ArrayList<>();
         GsonBuilder builder = new GsonBuilder().serializeNulls();
         Gson gson = builder.create();
-        List<Document> documents = new ArrayList<>();
-        BasicDBObject sort = new BasicDBObject("_id", -1);
-        int limit;
 
-        openDatabase();
-
-        MongoCollection<Document> collection = this.getCollection(CHAPTERS_COLLECTION);
-
-        final int total = Math.toIntExact(collection.count());
-
-        for(int i = 0; documents.size() < total; i += MAX_BATCH_TO_GET) {
-
-            limit = ((i + MAX_BATCH_TO_GET) < total) ? MAX_BATCH_TO_GET : (total - i);
-
-            List<Document> batch = collection.find().sort(sort).skip(i).limit(limit).into(new ArrayList<>());
-
-            documents.addAll(batch);
-        }
-
-        closeDatabase();
+        List<Document> documents = getDocumentsFromCollection(CHAPTERS_COLLECTION, null, null);
 
         documents.forEach(document -> {
 
@@ -174,15 +142,11 @@ public class MongoConnector {
 
         List<Chapter> chapters = new ArrayList<>();
         Gson gson = new Gson();
+        Bson query = Filters.exists("keywords", true);
 
-        openDatabase();
+        List<Document> documents = getDocumentsFromCollection(CHAPTERS_COLLECTION, query, null);
 
-        MongoCollection<Document> collection = this.getCollection(CHAPTERS_COLLECTION);
-        List<Document> result = collection.find(Filters.exists("keywords", true)).into(new ArrayList<>());
-
-        closeDatabase();
-
-        result.forEach(document -> {
+        documents.forEach(document -> {
 
             try {
                 String json = document.toJson();
@@ -205,14 +169,9 @@ public class MongoConnector {
         SortedSet<Report> reports = new TreeSet<>();
         Gson gson = new Gson();
 
-        openDatabase();
+        List<Document> documents = getDocumentsFromCollection(REPORTS_COLLECTION, null, null);
 
-        MongoCollection<Document> collection = this.getCollection(REPORTS_COLLECTION);
-        List<Document> result = collection.find().into(new ArrayList<>());
-
-        closeDatabase();
-
-        for (Document document : result) {
+        documents.forEach(document -> {
 
             try {
 
@@ -222,7 +181,7 @@ public class MongoConnector {
 
             } catch (Exception ignored) {
             }
-        }
+        });
 
         return reports;
     }
@@ -232,14 +191,9 @@ public class MongoConnector {
         Set<Rating> ratings = new HashSet<>();
         Gson gson = new Gson();
 
-        openDatabase();
+        List<Document> documents = getDocumentsFromCollection(RATINGS_COLLECTION, null, null);
 
-        MongoCollection<Document> collection = this.getCollection(RATINGS_COLLECTION);
-        List<Document> result = collection.find().into(new ArrayList<>());
-
-        closeDatabase();
-
-        result.forEach(document -> {
+        documents.forEach(document -> {
 
             try {
                 Rating rating = gson.fromJson(document.toJson(), Rating.class);
@@ -290,6 +244,44 @@ public class MongoConnector {
 
 
     // MARK: Private functions
+
+    private List<Document> getDocumentsFromCollection(String collectionName, Bson query, MongoClientURI uri) {
+
+        BasicDBObject sort = new BasicDBObject("_id", -1);
+        List<Document> documents = new ArrayList<>();
+        int limit;
+
+        openDatabase((uri == null) ? baseURI : uri);
+
+        MongoCollection<Document> collection = this.getCollection(collectionName);
+        final int total = Math.toIntExact((query == null) ? collection.count() : collection.count(query));
+
+        System.out.printf("%nGetting data from collection '%s':%n", collectionName);
+
+        for(int i = 0; i < total; i += MAX_BATCH_TO_GET) {
+
+            limit = ((i + MAX_BATCH_TO_GET) < total) ? MAX_BATCH_TO_GET : (total - i);
+
+            System.out.printf("%8d total registers.%n", total);
+            System.out.printf("%8d skipped registers.%n", i);
+            System.out.printf("%8d got registers.%n%n", limit);
+            List<Document> batch;
+
+            if(query == null) {
+                batch = collection.find().sort(sort).skip(i).limit(limit).into(new ArrayList<>());
+            } else {
+                batch = collection.find(query).sort(sort).skip(i).limit(limit).into(new ArrayList<>());
+            }
+
+            documents.addAll(batch);
+        }
+
+        System.out.println("Data got.");
+
+        closeDatabase();
+
+        return documents;
+    }
 
     private MongoCollection<Document> getCollection(String collection) {
         return this.database.getCollection(collection);

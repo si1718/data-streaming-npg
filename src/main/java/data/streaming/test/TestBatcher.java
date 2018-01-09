@@ -2,7 +2,7 @@ package data.streaming.test;
 
 import data.streaming.scheduled.Batcher;
 
-public class TestScheduledExecutorService {
+public class TestBatcher {
 
     public static void main(String... args) throws Exception {
 

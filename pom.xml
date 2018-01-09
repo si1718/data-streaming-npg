@@ -37,7 +37,7 @@
                             <name>consumer</name>
                         </program>
                         <program>
-                            <mainClass>data.streaming.test.TestScheduledExecutorService</mainClass>
+                            <mainClass>data.streaming.test.TestBatcher</mainClass>
                             <name>scheduled</name>
                         </program>
                     </programs>

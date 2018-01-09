@@ -10,8 +10,11 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer010;
 import org.apache.flink.streaming.connectors.twitter.TwitterSource;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 
+import java.util.Collections;
 import java.util.Properties;
 import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 public class TestFlinkKafkaProducer {
 
@@ -23,7 +26,8 @@ public class TestFlinkKafkaProducer {
         TwitterSource twitterSource = new TwitterSource(LoggingFactory.getTwitterCredentias());
 
         SortedSet<String> keywordsHashTags = mongoConnector.getKeywordsHashTags();
-        final String[] KEYWORDS = keywordsHashTags.toArray(new String[keywordsHashTags.size()]);
+        SortedSet<String> keywords = keywordsHashTags.stream().limit(400).collect(Collectors.toCollection(TreeSet::new));
+        final String[] KEYWORDS = keywords.toArray(new String[keywords.size()]);
 
         // Set filter
         twitterSource.setCustomEndpointInitializer(new ValidTagsTweetEndpointInitializer(KEYWORDS));

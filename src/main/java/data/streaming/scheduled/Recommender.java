@@ -12,43 +12,19 @@ import org.grouplens.lenskit.RecommenderBuildException;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.stream.Collectors;
 
 import static data.streaming.db.MongoConnector.CHAPTERS_COLLECTION;
 import static data.streaming.db.MongoConnector.RECOMMENDATIONS_COLLECTION;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
-public class RecommenderTask {
-
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-
-    private final Integer INITIAL_DELAY = 0; // In seconds
-    private final Integer PERIOD = 60 * 60 * 24; // In seconds => 1 day
-    private final Integer SECONDS_TO_CANCEL = 60 * 60; // In seconds
+public class Recommender {
 
     private final MongoConnector mongoConnector = new MongoConnector();
 
-    public void prepare() {
+    public void run() {
 
-        final Runnable scheduled = this::start;
-
-        final ScheduledFuture<?> scheduledHandle = scheduler.scheduleAtFixedRate(scheduled, INITIAL_DELAY, PERIOD, SECONDS);
-
-//        scheduler.schedule((Runnable) () -> scheduledHandle.cancel(true), SECONDS_TO_CANCEL, SECONDS);
-    }
-
-    private void start() {
-
-        System.out.printf("%n Initializing batch... %n%n");
-
-        generateChaptersWithKeywords();
-
-//        generateRecommendations();
-
-        System.out.printf("%n Batch finished. %n%n");
+//        generateChaptersWithKeywords();
+        generateRecommendations();
     }
 
     private void generateRecommendations() {
@@ -69,6 +45,7 @@ public class RecommenderTask {
         assert recommendationsRaw != null;
 
         recommendationsRaw.forEach((key, values) -> {
+
             values.remove(key);
 
             if(values.size() > 0) {
@@ -80,13 +57,8 @@ public class RecommenderTask {
             }
         });
 
-        System.out.printf("%n Cleaning previous data in collection %s ... %n%n", RECOMMENDATIONS_COLLECTION);
         mongoConnector.cleanCollection(RECOMMENDATIONS_COLLECTION);
-        System.out.printf("%n Data cleaned. %n");
-
-        System.out.printf("%n Saving recommendations... %n%n");
         mongoConnector.populateCollection(RECOMMENDATIONS_COLLECTION, documents);
-        System.out.printf("%n Recommendations saved. %n%n");
     }
 
     private void generateChaptersWithKeywords() {
@@ -98,7 +70,7 @@ public class RecommenderTask {
         Gson gson = new Gson();
 
         // Only 2% of chapters will have keywords
-        final Integer SAMPLE = (chapters.size() * 2) / 100;
+        final Integer SAMPLE = (chapters.size() * 30) / 100;
 
         List<Chapter> withKeywords = chapters.subList(0, SAMPLE);
         List<Chapter> withoutKeywords = chapters.subList(SAMPLE, chapters.size());
