@@ -9,7 +9,7 @@ import com.optimaize.langdetect.profiles.LanguageProfileReader;
 import com.optimaize.langdetect.text.CommonTextObjectFactories;
 import com.optimaize.langdetect.text.TextObject;
 import com.optimaize.langdetect.text.TextObjectFactory;
-import edu.stanford.nlp.tagger.maxent.MaxentTagger;
+//import edu.stanford.nlp.tagger.maxent.MaxentTagger;
 import org.json.simple.JSONArray;
 import org.json.simple.parser.JSONParser;
 
@@ -23,9 +23,9 @@ import static java.util.Locale.ENGLISH;
 public class LanguageUtils {
 
     private static final Locale SPANISH = new Locale("es", "ES");
-    private static final MaxentTagger SPANISH_TAGGER = new MaxentTagger("resources/spanish-ud.tagger");
-    private static final MaxentTagger ENGLISH_TAGGER = new MaxentTagger("resources/english-distsim.tagger");
-    private static MaxentTagger tagger;
+//    private static final MaxentTagger SPANISH_TAGGER = new MaxentTagger("resources/spanish-ud.tagger");
+//    private static final MaxentTagger ENGLISH_TAGGER = new MaxentTagger("resources/english-distsim.tagger");
+//    private static MaxentTagger tagger;
 
     // MARK: Public Functions
 
@@ -68,13 +68,14 @@ public class LanguageUtils {
             }
         });
 
-        tagger = (totalSpanishWords > totalEnglishWords) ? SPANISH_TAGGER :
-                (totalEnglishWords > totalSpanishWords) ? ENGLISH_TAGGER :
-                        (locale.equals(SPANISH)) ? SPANISH_TAGGER : ENGLISH_TAGGER;
+//        tagger = (totalSpanishWords > totalEnglishWords) ? SPANISH_TAGGER :
+//                (totalEnglishWords > totalSpanishWords) ? ENGLISH_TAGGER :
+//                        (locale.equals(SPANISH)) ? SPANISH_TAGGER : ENGLISH_TAGGER;
+//
+//        locale = (tagger.equals(SPANISH_TAGGER)) ? SPANISH : ENGLISH;
 
-        locale = (tagger.equals(SPANISH_TAGGER)) ? SPANISH : ENGLISH;
-
-        Set<String> importantWords = getImportantWords(text, locale);
+//        Set<String> importantWords = getImportantWords(text, locale);
+        Set<String> importantWords = words.keySet();
 
         Comparator<Map.Entry<String, Integer>> byImportance = Map.Entry.<String, Integer>comparingByValue().reversed();
         Comparator<Map.Entry<String, Integer>> byLength = (a, b) -> a.getKey().length() > b.getKey().length() ? -1 : a.getKey().length() < b.getKey().length() ? 1 : 0;
