@@ -184,17 +184,17 @@ public class LanguageUtils {
 
     private static Set<String> getImportantWords(String sentence, Locale locale) {
 
-        String tagged = tagger.tagString(sentence);
-
-        return Arrays
-                .stream(tagged.split("[\\s]+"))
-                .filter(word -> isImportantWord(word, locale))
-                .map(x -> {
-                    String clean = x.split("_")[0];
-                    clean = clean.trim();
-                    clean = clean.toLowerCase();
-                    return clean;
-                })
-                .collect(Collectors.toCollection(TreeSet::new));
+//        String tagged = tagger.tagString(sentence);
+//
+//        return Arrays
+//                .stream(tagged.split("[\\s]+"))
+//                .filter(word -> isImportantWord(word, locale))
+//                .map(x -> {
+//                    String clean = x.split("_")[0];
+//                    clean = clean.trim();
+//                    clean = clean.toLowerCase();
+//                    return clean;
+//                })
+//                .collect(Collectors.toCollection(TreeSet::new));
     }
 }
