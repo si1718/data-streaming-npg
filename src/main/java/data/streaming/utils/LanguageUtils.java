@@ -9,7 +9,7 @@ import com.optimaize.langdetect.profiles.LanguageProfileReader;
 import com.optimaize.langdetect.text.CommonTextObjectFactories;
 import com.optimaize.langdetect.text.TextObject;
 import com.optimaize.langdetect.text.TextObjectFactory;
-import edu.stanford.nlp.tagger.maxent.MaxentTagger;
+//import edu.stanford.nlp.tagger.maxent.MaxentTagger;
 import org.json.simple.JSONArray;
 import org.json.simple.parser.JSONParser;
 
@@ -20,12 +20,17 @@ import java.util.stream.Collectors;
 
 import static java.util.Locale.ENGLISH;
 
+/**
+ *  IMPORTANT INFORMATION, THE STANFORD LIBRARY WORK IN LOCAL, BUT WHEN I TRIED TO DEPLOY ON HEROKU FAIL THE LIBRARY,
+ *  BECAUSE IT'S NOT IN MAVEN. SO, TO MAKE IT WORK IS NECESSARY UNCOMMENT THE COMMENTED CODE.
+ **/
+
 public class LanguageUtils {
 
     private static final Locale SPANISH = new Locale("es", "ES");
-    private static final MaxentTagger SPANISH_TAGGER = new MaxentTagger("resources/spanish-ud.tagger");
-    private static final MaxentTagger ENGLISH_TAGGER = new MaxentTagger("resources/english-distsim.tagger");
-    private static MaxentTagger tagger;
+//    private static final MaxentTagger SPANISH_TAGGER = new MaxentTagger("resources/spanish-ud.tagger");
+//    private static final MaxentTagger ENGLISH_TAGGER = new MaxentTagger("resources/english-distsim.tagger");
+//    private static MaxentTagger tagger;
 
     // MARK: Public Functions
 
@@ -68,13 +73,14 @@ public class LanguageUtils {
             }
         });
 
-        tagger = (totalSpanishWords > totalEnglishWords) ? SPANISH_TAGGER :
-                (totalEnglishWords > totalSpanishWords) ? ENGLISH_TAGGER :
-                        (locale.equals(SPANISH)) ? SPANISH_TAGGER : ENGLISH_TAGGER;
+//        tagger = (totalSpanishWords > totalEnglishWords) ? SPANISH_TAGGER :
+//                (totalEnglishWords > totalSpanishWords) ? ENGLISH_TAGGER :
+//                        (locale.equals(SPANISH)) ? SPANISH_TAGGER : ENGLISH_TAGGER;
+//
+//        locale = (tagger.equals(SPANISH_TAGGER)) ? SPANISH : ENGLISH;
 
-        locale = (tagger.equals(SPANISH_TAGGER)) ? SPANISH : ENGLISH;
-
-        Set<String> importantWords = getImportantWords(text, locale);
+//        Set<String> importantWords = getImportantWords(text, locale);
+        Set<String> importantWords = words.keySet();
 
         Comparator<Map.Entry<String, Integer>> byImportance = Map.Entry.<String, Integer>comparingByValue().reversed();
         Comparator<Map.Entry<String, Integer>> byLength = (a, b) -> a.getKey().length() > b.getKey().length() ? -1 : a.getKey().length() < b.getKey().length() ? 1 : 0;
@@ -183,17 +189,18 @@ public class LanguageUtils {
 
     private static Set<String> getImportantWords(String sentence, Locale locale) {
 
-        String tagged = tagger.tagString(sentence);
-
-        return Arrays
-                .stream(tagged.split("[\\s]+"))
-                .filter(word -> isImportantWord(word, locale))
-                .map(x -> {
-                    String clean = x.split("_")[0];
-                    clean = clean.trim();
-                    clean = clean.toLowerCase();
-                    return clean;
-                })
-                .collect(Collectors.toCollection(TreeSet::new));
+//        String tagged = tagger.tagString(sentence);
+//
+//        return Arrays
+//                .stream(tagged.split("[\\s]+"))
+//                .filter(word -> isImportantWord(word, locale))
+//                .map(x -> {
+//                    String clean = x.split("_")[0];
+//                    clean = clean.trim();
+//                    clean = clean.toLowerCase();
+//                    return clean;
+//                })
+//                .collect(Collectors.toCollection(TreeSet::new));
+        return null;
     }
 }
