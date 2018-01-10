@@ -31,8 +31,8 @@ public class Batcher {
 
         System.out.printf("%n Initializing batch... %n%n");
 
-        ratings.run();
-        recommender.run();
+//        ratings.run();
+//        recommender.run();
         reports.run();
 
         System.out.printf("%n Batch finished. %n%n");

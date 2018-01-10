@@ -2,10 +2,12 @@ package data.streaming.scheduled;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.mongodb.client.model.Filters;
 import data.streaming.db.MongoConnector;
 import data.streaming.dto.*;
 import data.streaming.utils.Utils;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -19,26 +21,58 @@ import static data.streaming.db.MongoConnector.*;
 class Reports {
 
     private final String DAILY_REPORT_TYPE = "daily_report";
+    private final String TYPE_FIELD_NAME = "type";
     private final String MONTHLY_REPORT_TYPE = "monthly_report";
+    private final String RESEARCHERS_PER_CHAPTER_TYPE = "researchers_per_chapter";
+    private final String RESEARCHERS_PER_YEAR_TYPE = "researchers_per_year";
     private final String BOOKS_REPOSITORY_URL = "https://si1718-lgm-books.herokuapp.com/api/v1/books";
 
     private final MongoConnector mongoConnector = new MongoConnector();
+    private final List<Chapter> chapters = mongoConnector.getChapters();
 
     void run() {
 
         generateKeywordsReports();
-        generateChaptersReports();
+        generateResearchersPerChapterReport();
+        generateResearchersPerYearReport();
     }
 
-    private void generateChaptersReports() {
+    private void generateResearchersPerChapterReport() {
 
-        List<Chapter> chapters = mongoConnector.getChapters();
+        List<Document> documents = new ArrayList<>();
+        Map<Integer, Integer> reports = new TreeMap<>();
+
+        chapters.stream().filter(x -> x.getResearchers().size() > 0).forEach(chapter -> {
+
+            Integer numberOfResearchers = chapter.getResearchers().size();
+
+            if(reports.containsKey(numberOfResearchers)) {
+                reports.put(numberOfResearchers, reports.get(numberOfResearchers) + 1);
+            } else {
+                reports.put(numberOfResearchers, 1);
+            }
+        });
+
+        reports.forEach((researchers, numberOfChapters) -> {
+
+            Document document = new Document();
+            document.append("chapters", numberOfChapters);
+            document.append("researchers", researchers);
+            document.append(TYPE_FIELD_NAME, RESEARCHERS_PER_CHAPTER_TYPE);
+            documents.add(document);
+        });
+
+        Bson query = Filters.eq(TYPE_FIELD_NAME, RESEARCHERS_PER_CHAPTER_TYPE);
+        mongoConnector.cleanCollection(REPORTS_COLLECTION, query);
+        mongoConnector.populateCollection(REPORTS_COLLECTION, documents);
+    }
+
+    private void generateResearchersPerYearReport() {
+
         List<BookExtend> books = getBooks(BOOKS_REPOSITORY_URL);
         List<Document> documents = new ArrayList<>();
-        Map<Integer, Integer> researchersPerYear = new TreeMap<>();
-        Map<Integer, Integer> researchersPerChapter = new TreeMap<>();
+        Map<Integer, Integer> reports = new TreeMap<>();
 
-        // MARK: Researchers per Year
         chapters.stream().filter(x -> x.getBook() != null && x.getBook().getKey() != null).forEach(chapter -> {
 
             books.stream().filter(x -> x.getIsbn() != null && x.getYear() != null).forEach(book -> {
@@ -48,48 +82,27 @@ class Reports {
 
                 if(chapterBookKey.equalsIgnoreCase(bookIsbn)) {
 
-                    if(researchersPerYear.containsKey(book.getYear())) {
-                        researchersPerYear.put(book.getYear(), researchersPerYear.get(book.getYear()) + chapter.getResearchers().size());
+                    if(reports.containsKey(book.getYear())) {
+                        reports.put(book.getYear(), reports.get(book.getYear()) + chapter.getResearchers().size());
                     } else {
-                        researchersPerYear.put(book.getYear(), chapter.getResearchers().size());
+                        reports.put(book.getYear(), chapter.getResearchers().size());
                     }
                 }
             });
         });
 
-        researchersPerYear.forEach((year, researchers) -> {
+        reports.forEach((year, researchers) -> {
+
             Document document = new Document();
             document.append("year", year);
             document.append("researchers", researchers);
+            document.append(TYPE_FIELD_NAME, RESEARCHERS_PER_YEAR_TYPE);
             documents.add(document);
         });
 
-        mongoConnector.cleanCollection(RESEARCHERS_PER_YEAR_COLLECTION);
-        mongoConnector.populateCollection(RESEARCHERS_PER_YEAR_COLLECTION, documents);
-
-
-        documents.clear();
-
-        // MARK: Researchers per Chapter
-        chapters.stream().filter(x -> x.getResearchers().size() > 0).forEach(chapter -> {
-
-            Integer numberOfResearchers = chapter.getResearchers().size();
-
-            if(researchersPerChapter.containsKey(numberOfResearchers)) {
-                researchersPerChapter.put(numberOfResearchers, researchersPerChapter.get(numberOfResearchers) + 1);
-            } else {
-                researchersPerChapter.put(numberOfResearchers, 1);
-            }
-        });
-
-        researchersPerChapter.forEach((researchers, numberOfChapters) -> {
-            Document document = new Document();
-            document.append("chapters", numberOfChapters);
-            document.append("researchers", researchers);
-            documents.add(document);
-        });
-        mongoConnector.cleanCollection(RESEARCHERS_PER_CHAPTER_COLLECTION);
-        mongoConnector.populateCollection(RESEARCHERS_PER_CHAPTER_COLLECTION, documents);
+        Bson query = Filters.eq(TYPE_FIELD_NAME, RESEARCHERS_PER_YEAR_TYPE);
+        mongoConnector.cleanCollection(REPORTS_COLLECTION, query);
+        mongoConnector.populateCollection(REPORTS_COLLECTION, documents);
     }
 
     private List<BookExtend> getBooks(String url){

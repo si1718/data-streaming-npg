@@ -210,7 +210,11 @@ public class MongoConnector {
     // MARK: Aux functions
 
     public void cleanCollection(String collection) {
-        cleanCollection(baseURI, collection);
+        cleanCollection(baseURI, collection, null);
+    }
+
+    public void cleanCollection(String collection, Bson query) {
+        cleanCollection(baseURI, collection, query);
     }
 
     public void cleanCollection(String database, String collection) {
@@ -226,16 +230,20 @@ public class MongoConnector {
                 break;
         }
 
-        cleanCollection(uri, collection);
+        cleanCollection(uri, collection, null);
     }
 
-    public void cleanCollection(MongoClientURI uri, String collection) {
+    public void cleanCollection(MongoClientURI uri, String collection, Bson query) {
 
         System.out.printf("%n Cleaning previous data in collection %s ... %n%n", collection);
 
         openDatabase(uri);
 
-        this.getCollection(collection).drop();
+        if(query == null) {
+            this.getCollection(collection).drop();
+        } else {
+            this.getCollection(collection).deleteMany(query);
+        }
 
         closeDatabase();
 
